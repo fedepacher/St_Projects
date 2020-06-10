@@ -34,6 +34,7 @@ TaskHandle_t wifiTask;
 QueueHandle_t xSemaphorePub;
 QueueHandle_t xSemaphoreSub;
 QueueHandle_t xQueueDataRx;
+QueueHandle_t xQueuePrintConsole;
 
 SemaphoreHandle_t xSemaphoreMutexUart;
 
@@ -44,6 +45,7 @@ void ledTask(void *argument);
 void pubTask(void *argument);
 void subTask(void *argument);
 void analizeTask(void *argument);
+void printConsoleTask(void *argument);
 
 void initTasks(void) {
 
@@ -59,9 +61,11 @@ void initTasks(void) {
 	xSemaphoreMutexUart = xSemaphoreCreateMutex();
 	//xSemaphorePub = xSemaphoreCreateBinary();
 
+	xQueuePrintConsole = xQueueCreate(100, sizeof(uint8_t));
+
 	xQueueDataRx = xQueueCreate(5, sizeof(int32_t));
 	//xSemaphorePub != NULL && xSemaphoreSub != NULL &&
-	if (xSemaphoreMutexUart != NULL && xQueueDataRx != NULL) {
+	if (xSemaphoreMutexUart != NULL && xQueueDataRx != NULL && xQueuePrintConsole != NULL) {
 		BaseType_t res = xTaskCreate(wifiConnectTask, "wifi", STACK_SIZE, 0,
 				(osPriority_t) osPriorityAboveNormal, &wifiTask);
 		if (res != pdPASS) {
@@ -74,6 +78,13 @@ void initTasks(void) {
 			printf("error creacion de tarea led\r\n");
 			flag_error_mem = 1;
 		}
+		res = xTaskCreate(printConsoleTask, "print", 128, 0,
+						(osPriority_t) osPriorityAboveNormal, 0);
+		if (res != pdPASS) {
+			printf("error creacion de tarea led\r\n");
+			flag_error_mem = 1;
+		}
+
 		/*res = xTaskCreate(pubTask, "publish", STACK_SIZE, 0,
 				(osPriority_t) osPriorityAboveNormal, 0);
 		if (res != pdPASS) {
@@ -172,7 +183,6 @@ void wifiConnectTask(void *argument) {
 			break;
 		case 4:
 			// Send the mqtt data.
-			//Status = ESP82_Send(address, bytes);
 			Status = mqtt_Connect();
 			if (Status == ESP8266_OK) {
 				internalState++;
@@ -184,16 +194,10 @@ void wifiConnectTask(void *argument) {
 			}
 			break;
 		case 5:
-			mqtt_SubscriberPacket(topic_sub);
-			//Status = mqtt_SubscriberPacket();
-			//Status = mqtt_Publisher();
-			vTaskDelayUntil(&t, pdMS_TO_TICKS(5000));
-			//Status = mqtt_Subscriber();
-			//if (Status == ESP8266_OK) {
 			vLedWrite(LED_2, GPIO_PIN_SET);
-			//xSemaphoreGive(xSemaphorePub);
-			//xSemaphoreGive(xSemaphoreSub);
 
+			mqtt_SubscriberPacket(topic_sub);
+			vTaskDelayUntil(&t, pdMS_TO_TICKS(5000));
 
 
 			xSemaphoreSub = xSemaphoreCreateBinary();
@@ -242,6 +246,23 @@ void ledTask(void *argument) {
 	for (;;) {
 		vLedToggle(LED_1);
 		vTaskDelayUntil(&t, pdMS_TO_TICKS(100));
+	}
+}
+
+void printConsoleTask(void *argument){
+	int8_t dataQueuePrint;
+/*	uint8_t dato1 = 'w';
+	printf("%c",dato1);
+	uint8_t a1 = 'a';
+	printf("%c",(char*)a1);*/
+	for(;;){
+		xQueueReceive(xQueuePrintConsole, &dataQueuePrint, portMAX_DELAY);
+		taskENTER_CRITICAL();
+		//xSemaphoreTake(xSemaphoreMutexUart, 20000);
+		printf("%c", dataQueuePrint);
+		//xSemaphoreGive(xSemaphoreMutexUart);
+		taskEXIT_CRITICAL();
+		vTaskDelay(1 / portTICK_PERIOD_MS);
 	}
 }
 

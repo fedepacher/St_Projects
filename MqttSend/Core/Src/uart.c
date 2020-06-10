@@ -16,7 +16,7 @@
 /* Extern variables -------------------------------------------------------------*/
 extern UART_HandleTypeDef huart1;
 extern QueueHandle_t xSemaphoreSub;
-
+extern QueueHandle_t xQueuePrintConsole;
 
 /* Private function prototypes -----------------------------------------------*/
 static void WIFI_Handler(void);
@@ -33,16 +33,19 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	xHigherPriorityTaskWoken = pdFALSE;
 
 	if (huart->Instance == USART1) {
+		uint8_t dato = WiFiRxBuffer.data[WiFiRxBuffer.tail];
+
 
 		if (++WiFiRxBuffer.tail >= ESP_BUFFERSIZE_CIRCULAR) {
 			WiFiRxBuffer.tail = 0;
 		}
+
 		// Receive one byte in interrupt mode
 		HAL_UART_Receive_IT(huart, (uint8_t*) &WiFiRxBuffer.data[WiFiRxBuffer.tail], 1);
-
 		if(xSemaphoreSub != NULL)
 			xSemaphoreGiveFromISR(xSemaphoreSub, &xHigherPriorityTaskWoken);
 
+		xQueueSendFromISR(xQueuePrintConsole, &dato, &xHigherPriorityTaskWoken);
 	}
 	/* If xHigherPriorityTaskWoken was set to true you
 	    we should yield.  The actual macro used here is

@@ -186,6 +186,7 @@ int main(void)
   printf("Iniciando\r\n");//simepre tiene que estar un primer printf para que funcione bien
   printf("Espere...\r\n");
 
+
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */

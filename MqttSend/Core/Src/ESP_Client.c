@@ -39,7 +39,11 @@ typedef enum {
 } tESP82_State;
 
 
-static ESP8266_StatusTypeDef runAtCmd(uint8_t* cmd, uint32_t Length, const uint8_t* Token);
+//static ESP8266_StatusTypeDef runAtCmd(uint8_t* cmd, uint32_t Length, const uint8_t* Token);
+static ESP8266_StatusTypeDef atCommand(uint8_t* cmd, uint32_t Length, const uint8_t* Token);
+static ESP8266_StatusTypeDef executeAtCmd(uint8_t* cmd, uint32_t Length);
+static ESP8266_StatusTypeDef responseAtCmd(const uint8_t* Token);
+
 static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length);
 static ESP8266_StatusTypeDef getData(uint8_t* Buffer, uint32_t Length, uint32_t* RetLength);
 
@@ -91,7 +95,7 @@ ESP8266_StatusTypeDef ESP_Delay(const uint16_t delay_ms){
  */
 ESP8266_StatusTypeDef ESP_Reset(){
 	ESP8266_StatusTypeDef result;
-	result = runAtCmd((uint8_t*)"AT+RST\r\n", 8, (uint8_t*) AT_OK_STRING);
+	//result = runAtCmd((uint8_t*)"AT+RST\r\n", 8, (uint8_t*) AT_OK_STRING);
 	return result;
 }
 /*
@@ -119,7 +123,7 @@ ESP8266_StatusTypeDef ESP_ConnectWifi(const bool resetToDefault, const char * ss
 	//nobreak;
 	case ESP82_State1:
 		// AT+RESTORE (if requested).
-		if(!resetToDefault || (ESP8266_OK == (result = runAtCmd((uint8_t*)"AT\r\n", 4, (uint8_t*) AT_OK_STRING)))) {
+		if(!resetToDefault || (ESP8266_OK == (result = atCommand((uint8_t*)"AT\r\n", 4, (uint8_t*) AT_OK_STRING)))) {
 			// To the next state.
 			internalState = ESP82_State2;
 		} else {
@@ -141,7 +145,7 @@ ESP8266_StatusTypeDef ESP_ConnectWifi(const bool resetToDefault, const char * ss
 		//nobreak;
 	case ESP82_State3:
 		// AT+CWMODE (client mode)
-		if((ESP8266_OK == (result = runAtCmd((uint8_t*)"AT+CWMODE=1\r\n", 13, (uint8_t*) AT_OK_STRING))) && (ssid != NULL)){
+		if((ESP8266_OK == (result = atCommand((uint8_t*)"AT+CWMODE=1\r\n", 13, (uint8_t*) AT_OK_STRING))) && (ssid != NULL)){
 			// To the next state.
 			internalState = ESP82_State4;
 		} else{
@@ -165,7 +169,7 @@ ESP8266_StatusTypeDef ESP_ConnectWifi(const bool resetToDefault, const char * ss
 		//nobreak;
 	case ESP82_State5:
 		// AT+CWJAP
-		return runAtCmd(ESP82_cmdBuffer, strlen((char*)ESP82_cmdBuffer), (uint8_t*) AT_OK_STRING);
+		return atCommand(ESP82_cmdBuffer, strlen((char*)ESP82_cmdBuffer), (uint8_t*) AT_OK_STRING);
 
 		//nobreak;
 	default:
@@ -179,7 +183,7 @@ ESP8266_StatusTypeDef ESP_ConnectWifi(const bool resetToDefault, const char * ss
  * @return SUCCESS, INPROGRESS or ERROR.
  */
 ESP8266_StatusTypeDef ESP_IsConnectedWifi(void) {
-	return runAtCmd((uint8_t*)"AT+CIPSTATUS\r\n", 14, (uint8_t*) AT_OK_STRING);
+	return atCommand((uint8_t*)"AT+CIPSTATUS\r\n", 14, (uint8_t*) AT_OK_STRING);
 }
 
 
@@ -220,7 +224,7 @@ ESP8266_StatusTypeDef ESP_StartTCP(const char * host, const uint16_t port, const
 		//nobreak;
 	case ESP82_State1:
 		// AT+CIPSSLSIZE (or skip)
-		if(!ssl || (ESP8266_OK == (result = runAtCmd((uint8_t*)ESP_SSLSIZE_str, 20, (uint8_t*) AT_OK_STRING)))){
+		if(!ssl || (ESP8266_OK == (result = atCommand((uint8_t*)ESP_SSLSIZE_str, 20, (uint8_t*) AT_OK_STRING)))){
 			// To the next state.
 			internalState = ESP82_State2;
 		}else{
@@ -230,7 +234,7 @@ ESP8266_StatusTypeDef ESP_StartTCP(const char * host, const uint16_t port, const
 		//nobreak;
 	case ESP82_State2:
 		// AT+CIPSTART
-		return runAtCmd((uint8_t*)ESP82_cmdBuffer, strlen((char*)ESP82_cmdBuffer), (uint8_t*) AT_OK_STRING);
+		return atCommand((uint8_t*)ESP82_cmdBuffer, strlen((char*)ESP82_cmdBuffer), (uint8_t*) AT_OK_STRING);
 	}
 }
 
@@ -254,7 +258,7 @@ ESP8266_StatusTypeDef ESP_SendData(uint8_t* Buffer, uint32_t Length) {
 		/* The CIPSEND command doesn't have a return command
 		 until the data is actually sent. Thus we check here whether
 		 we got the '>' prompt or not. */
-		Ret = runAtCmd(ESP82_cmdBuffer, strlen((char *) ESP82_cmdBuffer),
+		Ret = atCommand(ESP82_cmdBuffer, strlen((char *) ESP82_cmdBuffer),
 				(uint8_t*) AT_SEND_PROMPT_STRING);
 
 		/* Return Error */
@@ -263,17 +267,10 @@ ESP8266_StatusTypeDef ESP_SendData(uint8_t* Buffer, uint32_t Length) {
 		}
 
 		/* Wait before sending data. */
-		//tickStart = HAL_GetTick();
-		//tickStart = xTaskGetTickCount();
-		//while (HAL_GetTick() - tickStart < 500)
-		//while (xTaskGetTickCount() - tickStart < 1000)
-		//{
-		//}
-
-		osDelay(1000); //delay no bloqueante
+		osDelay(5000); //not blocking delay
 
 		/* Send the data */
-		Ret = runAtCmd(Buffer, Length, (uint8_t*) AT_SEND_OK_STRING);//AT_IPD_STRING);//
+		Ret = atCommand(Buffer, Length, (uint8_t*) AT_SEND_OK_STRING);//AT_IPD_STRING);//
 	}
 
 	return Ret;
@@ -296,6 +293,43 @@ ESP8266_StatusTypeDef ESP_ReceiveData(uint8_t* Buffer, uint32_t Length,
 	return Ret;
 }
 
+
+ESP8266_StatusTypeDef atCommand(uint8_t* cmd, uint32_t Length, const uint8_t* Token) {
+	static uint8_t internalState;
+	ESP8266_StatusTypeDef result;
+
+	// State machine.
+	switch (internalState = (ESP82_inProgress ? internalState : ESP82_State0)) {
+	case ESP82_State0:
+
+		result = executeAtCmd(cmd, Length);
+
+		// To the next state.
+		if(result == ESP8266_OK)
+			internalState = ESP82_State1;
+	case ESP82_State1:
+		return responseAtCmd(Token);
+
+	}
+}
+
+
+/**
+ * @brief  Run the AT command
+ * @param  cmd the buffer to fill will the received data.
+ * @param  Length the maximum data size to receive.
+ * @retval Returns ESP8266_OK on success and ESP8266_ERROR otherwise.
+ */
+static ESP8266_StatusTypeDef executeAtCmd(uint8_t* cmd, uint32_t Length) {
+
+	/* Send the command */
+	if (HAL_UART_F_Send((char*)cmd, Length) < 0) {
+		return ESP8266_ERROR;
+	}
+	return ESP8266_OK;
+}
+
+
 /**
  * @brief  Run the AT command
  * @param  cmd the buffer to fill will the received data.
@@ -303,8 +337,7 @@ ESP8266_StatusTypeDef ESP_ReceiveData(uint8_t* Buffer, uint32_t Length,
  * @param  Token the expected output if command runs successfully
  * @retval Returns ESP8266_OK on success and ESP8266_ERROR otherwise.
  */
-static ESP8266_StatusTypeDef runAtCmd(uint8_t* cmd, uint32_t Length,
-		const uint8_t* Token) {
+static ESP8266_StatusTypeDef responseAtCmd(const uint8_t* Token) {
 	uint32_t idx = 0;
 	uint8_t RxChar;
 	uint8_t status_io = 0;//0 is ok
@@ -312,18 +345,10 @@ static ESP8266_StatusTypeDef runAtCmd(uint8_t* cmd, uint32_t Length,
 	/* Reset the Rx buffer to make sure no previous data exist */
 	memset(RxBuffer, '\0', ESP_BUFFERSIZE_RESPONSE);
 
-	/* Send the command */
-	if (HAL_UART_F_Send((char*)cmd, Length) < 0) {
-		return ESP8266_ERROR;
-	}
-
-	//DEBUGGING STYLE
-	/*if(DEBUG == 1)
-		printf((char*) cmd, Length);*/
 
 	uint32_t currentTime = 0;
 	/* Wait for reception */
-	while(1) {
+	do {
 		/* Wait to recieve data */
 		if (ESP_Receive(&RxChar, 1) != 0) {
 			RxBuffer[idx++] = RxChar;
@@ -351,14 +376,16 @@ static ESP8266_StatusTypeDef runAtCmd(uint8_t* cmd, uint32_t Length,
 			break;
 			//return ESP8266_ERROR;
 		}
-		//currentTime++;
-		//osDelay(1);
-	}//while(currentTime < ESP_LONG_TIME_OUT);
+		currentTime++;
+		osDelay(1);
+	}while(currentTime < ESP_LONG_TIME_OUT);
 
 	if(status_io == 1)
 		return ESP8266_ERROR;
 	return ESP8266_OK;
 }
+
+
 
 
 static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
@@ -391,14 +418,14 @@ static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
 		} while((xTaskGetTickCount() - tickStart) < ESP_DEFAULT_TIME_OUT);
 		//} while ((HAL_GetTick() - tickStart) < ESP_DEFAULT_TIME_OUT);
 	}
-#if DEBUG == 1
+/*#if DEBUG == 1
 
 	if(ReadData > 0){
 		//taskENTER_CRITICAL();
 		printf((char * ) &WiFiRxBuffer.data[WiFiRxBuffer.head - ReadData],ReadData);
 		//taskEXIT_CRITICAL();
 	}
-#endif
+#endif*/
 	return ReadData;
 }
 
