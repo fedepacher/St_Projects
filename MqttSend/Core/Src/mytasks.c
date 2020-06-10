@@ -57,12 +57,11 @@ void initTasks(void) {
 	}
 
 	xSemaphoreMutexUart = xSemaphoreCreateMutex();
-	xSemaphorePub = xSemaphoreCreateBinary();
-	xSemaphoreSub = xSemaphoreCreateBinary();
-	xQueueDataRx = xQueueCreate(2, sizeof(int32_t));
+	//xSemaphorePub = xSemaphoreCreateBinary();
 
-	if (xSemaphorePub != NULL && xSemaphoreSub != NULL
-			&& xSemaphoreMutexUart != NULL && xQueueDataRx != NULL) {
+	xQueueDataRx = xQueueCreate(5, sizeof(int32_t));
+	//xSemaphorePub != NULL && xSemaphoreSub != NULL &&
+	if (xSemaphoreMutexUart != NULL && xQueueDataRx != NULL) {
 		BaseType_t res = xTaskCreate(wifiConnectTask, "wifi", STACK_SIZE, 0,
 				(osPriority_t) osPriorityAboveNormal, &wifiTask);
 		if (res != pdPASS) {
@@ -70,30 +69,30 @@ void initTasks(void) {
 			flag_error_mem = 1;
 		}
 		res = xTaskCreate(ledTask, "led", 128, 0,
-				(osPriority_t) osPriorityAboveNormal, 0);
+				(osPriority_t) osPriorityNormal, 0);
 		if (res != pdPASS) {
 			printf("error creacion de tarea led\r\n");
 			flag_error_mem = 1;
 		}
-		res = xTaskCreate(pubTask, "publish", STACK_SIZE, 0,
+		/*res = xTaskCreate(pubTask, "publish", STACK_SIZE, 0,
 				(osPriority_t) osPriorityAboveNormal, 0);
 		if (res != pdPASS) {
 			printf("error creacion de tarea pub\r\n");
 			flag_error_mem = 1;
-		}
-		res = xTaskCreate(subTask, "subscribe", STACK_SIZE, 0,
-				(osPriority_t) osPriorityAboveNormal, 0);
+		}*/
+		/*res = xTaskCreate(subTask, "subscribe", STACK_SIZE, 0,
+				(osPriority_t) osPriorityAboveNormal1, 0);
 		if (res != pdPASS) {
 			printf("error creacion de tarea sub\r\n");
 			flag_error_mem = 1;
-		}
-		res = xTaskCreate(analizeTask, "analize data", 256, 0,
+		}*/
+		/*res = xTaskCreate(analizeTask, "analize data", 256, 0,
 				(osPriority_t) osPriorityAboveNormal, 0);
 		if (res != pdPASS) {
 			printf("error creacion de tarea analize\r\n");
 			flag_error_mem = 1;
 
-		}
+		}*/
 	} else {
 		printf("error creacion de semaforo\r\n");
 		flag_error_mem = 1;
@@ -192,7 +191,37 @@ void wifiConnectTask(void *argument) {
 			//Status = mqtt_Subscriber();
 			//if (Status == ESP8266_OK) {
 			vLedWrite(LED_2, GPIO_PIN_SET);
-			xSemaphoreGive(xSemaphorePub);
+			//xSemaphoreGive(xSemaphorePub);
+			//xSemaphoreGive(xSemaphoreSub);
+
+
+
+			xSemaphoreSub = xSemaphoreCreateBinary();
+			xSemaphorePub = xSemaphoreCreateBinary();
+
+			if(xSemaphoreSub != NULL && xSemaphorePub != NULL){
+				BaseType_t res = xTaskCreate(subTask, "subscribe", STACK_SIZE, 0,
+					(osPriority_t) osPriorityAboveNormal, 0);
+				if (res != pdPASS) {
+					printf("error creacion de tarea sub\r\n");
+				}
+				res = xTaskCreate(analizeTask, "analize data", 256, 0,
+						(osPriority_t) osPriorityNormal, 0);
+				if (res != pdPASS) {
+					printf("error creacion de tarea analize\r\n");
+				}
+				res = xTaskCreate(pubTask, "publish", STACK_SIZE, 0,
+							(osPriority_t) osPriorityNormal, 0);
+				if (res != pdPASS) {
+					printf("error creacion de tarea pub\r\n");
+				}
+				xSemaphoreGive(xSemaphorePub);
+			}
+			else{
+				printf("error creacion de semaforo\r\n");
+			}
+
+
 			internalState++;
 
 			//}
@@ -226,21 +255,24 @@ void pubTask(void *argument) {
 		Status = mqtt_Publisher(topic_pub, data);
 		xSemaphoreGive(xSemaphoreMutexUart);
 		if (Status == ESP8266_OK) {
-			xSemaphoreGive(xSemaphoreSub);
+			//xSemaphoreGive(xSemaphoreSub);
 		}
 		data++;
 
-		vTaskDelayUntil(&t, pdMS_TO_TICKS(2500));
+		vTaskDelayUntil(&t, pdMS_TO_TICKS(5000));
 	}
 }
 
 void subTask(void *argument) {
 	ESP8266_StatusTypeDef Status;
-	xSemaphoreTake(xSemaphoreSub, portMAX_DELAY);
+
 	for (;;) {
+		xSemaphoreTake(xSemaphoreSub, portMAX_DELAY);
+
 		xSemaphoreTake(xSemaphoreMutexUart, 20000);
 		Status = mqtt_SubscriberReceive(topic_sub, &data_rx);
 		xSemaphoreGive(xSemaphoreMutexUart);
+
 		if (Status == ESP8266_OK) {
 			if (data_rx != -1)
 				xQueueSend(xQueueDataRx, &data_rx, 100);
@@ -255,12 +287,14 @@ void analizeTask(void *argument) {
 	for (;;) {
 		xQueueReceive(xQueueDataRx, &dataQueueRx, portMAX_DELAY);
 		if (dataQueueRx > 100) {
-			if (dataQueueRx % 2 == 0) {
-				vLedWrite(LED_2, GPIO_PIN_SET);
-			} else {
-				vLedWrite(LED_2, GPIO_PIN_RESET);
-			}
+			vLedToggle(LED_7);
 		}
+		if (dataQueueRx % 2 == 0) {
+			vLedWrite(LED_2, GPIO_PIN_SET);
+		} else {
+			vLedWrite(LED_2, GPIO_PIN_RESET);
+		}
+
 		vTaskDelay(1 / portTICK_PERIOD_MS);
 	}
 }

@@ -9,12 +9,14 @@
 #include <stdio.h>
 #include <string.h>
 #include "cmsis_os.h"
-//#include "semphr.h"
+#include "semphr.h"
 #include "ESP_Client.h"
 #include "led.h"
 
 /* Extern variables -------------------------------------------------------------*/
 extern UART_HandleTypeDef huart1;
+extern QueueHandle_t xSemaphoreSub;
+
 
 /* Private function prototypes -----------------------------------------------*/
 static void WIFI_Handler(void);
@@ -26,7 +28,10 @@ static void WIFI_Handler(void);
  */
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	// Set transmission flag: transfer complete
-	//BaseType_t xHigherPriorityTaskWoken;
+	static BaseType_t xHigherPriorityTaskWoken;
+
+	xHigherPriorityTaskWoken = pdFALSE;
+
 	if (huart->Instance == USART1) {
 
 		if (++WiFiRxBuffer.tail >= ESP_BUFFERSIZE_CIRCULAR) {
@@ -34,7 +39,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		}
 		// Receive one byte in interrupt mode
 		HAL_UART_Receive_IT(huart, (uint8_t*) &WiFiRxBuffer.data[WiFiRxBuffer.tail], 1);
+
+		if(xSemaphoreSub != NULL)
+			xSemaphoreGiveFromISR(xSemaphoreSub, &xHigherPriorityTaskWoken);
+
 	}
+	/* If xHigherPriorityTaskWoken was set to true you
+	    we should yield.  The actual macro used here is
+	    port specific. */
+	portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
 }
 
 /**

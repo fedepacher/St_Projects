@@ -33,7 +33,7 @@
 // Timing settings.
 #define ESP_TIMEOUT_MS_RESTART       2000UL///< Module restart timeout.
 #define ESP_DEFAULT_TIME_OUT         3000UL /* in ms */
-
+#define ESP_LONG_TIME_OUT         	20000UL /* in ms */
 
 typedef enum
 {

@@ -260,7 +260,7 @@ static int32_t findIntData(char topic[], uint8_t *data, uint32_t lenght) {
 	data_begin = strpos((char*)newdata, (char*)topic, 0);	//get index where string topic begins
 	data_end = strpos((char*)newdata, (char*)END_STRING_R_N, 0);		//get index where \r\n ends
 
-	if(data_end == -1){
+	if(data_end == -1 && data_begin != -1){
 		data_end = strpos((char*)newdata, (char*)END_STRING_N, 0);		//get index where \n ends
 	}
 

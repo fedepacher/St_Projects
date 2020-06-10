@@ -245,7 +245,7 @@ ESP8266_StatusTypeDef ESP_SendData(uint8_t* Buffer, uint32_t Length) {
 
 	if (Buffer != NULL) {
 		//uint32_t tickStart;
-		TickType_t tickStart;
+		//TickType_t tickStart;
 
 		/* Construct the CIPSEND command */
 		memset(ESP82_cmdBuffer, '\0', ESP_BUFFERSIZE_CMD);
@@ -264,11 +264,13 @@ ESP8266_StatusTypeDef ESP_SendData(uint8_t* Buffer, uint32_t Length) {
 
 		/* Wait before sending data. */
 		//tickStart = HAL_GetTick();
-		tickStart = xTaskGetTickCount();
+		//tickStart = xTaskGetTickCount();
 		//while (HAL_GetTick() - tickStart < 500)
-		while (xTaskGetTickCount() - tickStart < 1000)
-		{
-		}
+		//while (xTaskGetTickCount() - tickStart < 1000)
+		//{
+		//}
+
+		osDelay(1000); //delay no bloqueante
 
 		/* Send the data */
 		Ret = runAtCmd(Buffer, Length, (uint8_t*) AT_SEND_OK_STRING);//AT_IPD_STRING);//
@@ -319,8 +321,9 @@ static ESP8266_StatusTypeDef runAtCmd(uint8_t* cmd, uint32_t Length,
 	/*if(DEBUG == 1)
 		printf((char*) cmd, Length);*/
 
+	uint32_t currentTime = 0;
 	/* Wait for reception */
-	while (1) {
+	while(1) {
 		/* Wait to recieve data */
 		if (ESP_Receive(&RxChar, 1) != 0) {
 			RxBuffer[idx++] = RxChar;
@@ -348,7 +351,9 @@ static ESP8266_StatusTypeDef runAtCmd(uint8_t* cmd, uint32_t Length,
 			break;
 			//return ESP8266_ERROR;
 		}
-	}
+		//currentTime++;
+		//osDelay(1);
+	}//while(currentTime < ESP_LONG_TIME_OUT);
 
 	if(status_io == 1)
 		return ESP8266_ERROR;
@@ -362,14 +367,15 @@ static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
 	while (Length--) {
 		//uint32_t tickStart = HAL_GetTick();
 		TickType_t tickStart = xTaskGetTickCount();
+		//uint32_t currentTime = 0;
 		do {
 			if (WiFiRxBuffer.head != WiFiRxBuffer.tail) {
 				/* serial data available, so return data to user */
-#if DEBUG == 1
+/*#if DEBUG == 1
 				//taskENTER_CRITICAL();
 				printf((char * ) &WiFiRxBuffer.data[WiFiRxBuffer.head],1);
 				//taskEXIT_CRITICAL();
-#endif
+#endif*/
 
 				*Buffer++ = WiFiRxBuffer.data[WiFiRxBuffer.head++];
 
@@ -382,9 +388,17 @@ static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
 				}
 				break;
 			}
-		} while ((xTaskGetTickCount() - tickStart) < ESP_DEFAULT_TIME_OUT);
+		} while((xTaskGetTickCount() - tickStart) < ESP_DEFAULT_TIME_OUT);
 		//} while ((HAL_GetTick() - tickStart) < ESP_DEFAULT_TIME_OUT);
 	}
+#if DEBUG == 1
+
+	if(ReadData > 0){
+		//taskENTER_CRITICAL();
+		printf((char * ) &WiFiRxBuffer.data[WiFiRxBuffer.head - ReadData],ReadData);
+		//taskEXIT_CRITICAL();
+	}
+#endif
 	return ReadData;
 }
 
@@ -395,8 +409,7 @@ static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
  * @param  RetLength Length of received data
  * @retval Returns ESP8266_OK on success and ESP8266_ERROR otherwise.
  */
-static ESP8266_StatusTypeDef getData(uint8_t* Buffer, uint32_t Length,
-		uint32_t* RetLength) {
+static ESP8266_StatusTypeDef getData(uint8_t* Buffer, uint32_t Length, uint32_t* RetLength) {
 	uint8_t RxChar;
 	uint32_t idx = 0;
 	uint8_t LengthString[4];
@@ -417,10 +430,10 @@ static ESP8266_StatusTypeDef getData(uint8_t* Buffer, uint32_t Length,
 	 - Extract the 'chunk_size' then read the next 'chunk_size' bytes as actual data
 	 - Mark end of the chunk.
 	 - Repeat steps above until no more data is available. */
-	while (1) {
+	uint32_t currentTime = 0;
+	do{
 		if (ESP_Receive(&RxChar, 1) != 0) {
 			/* The data chunk starts with +IPD,<chunk length>: */
-
 			if (newChunk == ESP8266_TRUE) {
 				/* Read the next lendthValue bytes as part from the actual data. */
 				if (LengthValue--) {
@@ -477,7 +490,14 @@ static ESP8266_StatusTypeDef getData(uint8_t* Buffer, uint32_t Length,
 		if (strstr((char *) RxBuffer, AT_IPD_OK_STRING) != NULL) {
 			newChunk = ESP8266_FALSE;
 		}
-	}
+		currentTime++;
+		osDelay(1);
+	}while(currentTime < ESP_LONG_TIME_OUT);
+
+			//taskENTER_CRITICAL();
+			printf((char * ) &RxBuffer,strlen((char*)RxBuffer));
+			//taskEXIT_CRITICAL();
+
 
 	return ESP8266_OK;
 }
