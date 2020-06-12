@@ -267,7 +267,7 @@ ESP8266_StatusTypeDef ESP_SendData(uint8_t* Buffer, uint32_t Length) {
 		}
 
 		/* Wait before sending data. */
-		osDelay(5000); //not blocking delay
+		osDelay(1000); //not blocking delay
 
 		/* Send the data */
 		Ret = atCommand(Buffer, Length, (uint8_t*) AT_SEND_OK_STRING);//AT_IPD_STRING);//
@@ -346,9 +346,10 @@ static ESP8266_StatusTypeDef responseAtCmd(const uint8_t* Token) {
 	memset(RxBuffer, '\0', ESP_BUFFERSIZE_RESPONSE);
 
 
-	uint32_t currentTime = 0;
+	//uint32_t currentTime = 0;
 	/* Wait for reception */
-	do {
+	//do {
+	while(1){
 		/* Wait to recieve data */
 		if (ESP_Receive(&RxChar, 1) != 0) {
 			RxBuffer[idx++] = RxChar;
@@ -376,9 +377,9 @@ static ESP8266_StatusTypeDef responseAtCmd(const uint8_t* Token) {
 			break;
 			//return ESP8266_ERROR;
 		}
-		currentTime++;
-		osDelay(1);
-	}while(currentTime < ESP_LONG_TIME_OUT);
+		//currentTime++;
+		//osDelay(1);
+	}//while(currentTime < ESP_LONG_TIME_OUT);
 
 	if(status_io == 1)
 		return ESP8266_ERROR;
@@ -394,16 +395,10 @@ static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
 	while (Length--) {
 		//uint32_t tickStart = HAL_GetTick();
 		TickType_t tickStart = xTaskGetTickCount();
-		//uint32_t currentTime = 0;
+		uint32_t currentTime = 0;
 		do {
 			if (WiFiRxBuffer.head != WiFiRxBuffer.tail) {
 				/* serial data available, so return data to user */
-/*#if DEBUG == 1
-				//taskENTER_CRITICAL();
-				printf((char * ) &WiFiRxBuffer.data[WiFiRxBuffer.head],1);
-				//taskEXIT_CRITICAL();
-#endif*/
-
 				*Buffer++ = WiFiRxBuffer.data[WiFiRxBuffer.head++];
 
 				ReadData++;
@@ -416,16 +411,8 @@ static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
 				break;
 			}
 		} while((xTaskGetTickCount() - tickStart) < ESP_DEFAULT_TIME_OUT);
-		//} while ((HAL_GetTick() - tickStart) < ESP_DEFAULT_TIME_OUT);
 	}
-/*#if DEBUG == 1
 
-	if(ReadData > 0){
-		//taskENTER_CRITICAL();
-		printf((char * ) &WiFiRxBuffer.data[WiFiRxBuffer.head - ReadData],ReadData);
-		//taskEXIT_CRITICAL();
-	}
-#endif*/
 	return ReadData;
 }
 
@@ -459,6 +446,7 @@ static ESP8266_StatusTypeDef getData(uint8_t* Buffer, uint32_t Length, uint32_t*
 	 - Repeat steps above until no more data is available. */
 	uint32_t currentTime = 0;
 	do{
+	//while(1){
 		if (ESP_Receive(&RxChar, 1) != 0) {
 			/* The data chunk starts with +IPD,<chunk length>: */
 			if (newChunk == ESP8266_TRUE) {
@@ -521,10 +509,8 @@ static ESP8266_StatusTypeDef getData(uint8_t* Buffer, uint32_t Length, uint32_t*
 		osDelay(1);
 	}while(currentTime < ESP_LONG_TIME_OUT);
 
-			//taskENTER_CRITICAL();
-			printf((char * ) &RxBuffer,strlen((char*)RxBuffer));
-			//taskEXIT_CRITICAL();
-
+	if(currentTime > ESP_LONG_TIME_OUT)
+		return ESP8266_ERROR;
 
 	return ESP8266_OK;
 }

@@ -22,7 +22,7 @@ ESP8266_StatusTypeDef mqtt_Connect(void);
 /*
  * @brief Send publish packet to the broker mqtt.
  */
-ESP8266_StatusTypeDef mqtt_Publisher(char *topic, uint8_t data);
+ESP8266_StatusTypeDef mqtt_Publisher(char *topic, int32_t data);
 
 /*
  * @brief Send subcribe packet to the broker mqtt.
@@ -31,6 +31,6 @@ ESP8266_StatusTypeDef mqtt_Subscriber();
 
 ESP8266_StatusTypeDef mqtt_SubscriberPacket(char *topic);
 
-ESP8266_StatusTypeDef mqtt_SubscriberReceive(char topic[], int32_t* pData);
+ESP8266_StatusTypeDef mqtt_SubscriberReceive(char topic[], int32_t *pData);
 
 #endif /* INC_MQTT_H_ */

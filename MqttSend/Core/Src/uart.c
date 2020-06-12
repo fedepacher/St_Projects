@@ -45,7 +45,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		if(xSemaphoreSub != NULL)
 			xSemaphoreGiveFromISR(xSemaphoreSub, &xHigherPriorityTaskWoken);
 
+#if DEBUG == 1
 		xQueueSendFromISR(xQueuePrintConsole, &dato, &xHigherPriorityTaskWoken);
+#endif
 	}
 	/* If xHigherPriorityTaskWoken was set to true you
 	    we should yield.  The actual macro used here is

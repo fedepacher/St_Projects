@@ -18,7 +18,6 @@
 
 const uint8_t END_STRING_R_N[] = "\r\n";
 const uint8_t END_STRING_N[] = "\n";
-static unsigned char buffer[128];
 //int32_t transport_socket;
 static int strpos(char *hay, char *needle, int offset);
 static int32_t findIntData(char topic[], uint8_t *data, uint32_t lenght);
@@ -28,6 +27,7 @@ ESP8266_StatusTypeDef mqtt_Connect(void) {
 	//MQTTTransport transporter;
 	//int32_t result;
 	int32_t length;
+	unsigned char buffer[128];
 
 	ESP8266_StatusTypeDef Status = ESP8266_OK;
 	int32_t internalState = 0;
@@ -50,6 +50,7 @@ ESP8266_StatusTypeDef mqtt_Connect(void) {
 			connectData.keepAliveInterval = CONNECTION_KEEPALIVE_S * 2;
 			//connectData.willFlag = 1;
 			//connectData.will.qos = 2;
+			memset((char*)buffer, '\0', strlen((char*)buffer));
 			length = MQTTSerialize_connect(buffer, sizeof(buffer),
 					&connectData);
 
@@ -107,14 +108,11 @@ ESP8266_StatusTypeDef mqtt_Connect(void) {
 	return Status;
 }
 
-ESP8266_StatusTypeDef mqtt_Publisher(char *topic, uint8_t data) {
-	//unsigned char buffer[128];
-	//MQTTTransport transporter;
-	//int32_t result;
+ESP8266_StatusTypeDef mqtt_Publisher(char *topic, int32_t data) {
+	unsigned char buffer[128];
 	int32_t length;
-	//uint32_t tickStart;// = HAL_GetTick();
-
-
+	int32_t trial = 0;
+	int32_t internalState = 0;
 	ESP8266_StatusTypeDef Status = ESP8266_OK;
 
 	// Populate the publish message.
@@ -122,29 +120,37 @@ ESP8266_StatusTypeDef mqtt_Publisher(char *topic, uint8_t data) {
 	topicString.cstring = topic;//"test/rgb";
 	unsigned char payload[16];
 	int qos = 0;
+	memset((char*)buffer, '\0', strlen((char*)buffer));
 	length = MQTTSerialize_publish(buffer, sizeof(buffer), 0, qos, 0, 0,
 			topicString, payload,
-			(length = sprintf((char *)payload, "%d%c%c", (int) data , '\r', '\n')));
+			(length = sprintf((char *)payload, "%d%c%c", data , '\r', '\n')));
 
 	// Send PUBLISH to the mqtt broker.
+	while (trial < TRIAL_CONNECTION_TIME) {
+		switch (internalState) {
+				case 0:
+					Status = ESP_SendData(buffer, length);
 
-	Status = ESP_SendData(buffer, length);
-
-	//tickStart = HAL_GetTick();
-	/*if (Status == ESP8266_OK){//(result = transport_sendPacketBuffer(transport_socket, buffer, length)) == length) {
-
-	} else {
-		// Start over.
-		Status = ESP8266_ERROR;
-	}*/
-
+					if (Status == ESP8266_OK){//(result = transport_sendPacketBuffer(transport_socket, buffer, length)) == length) {
+						internalState++;
+					} else {
+						internalState = 0;
+						trial++;
+					}
+				break;
+				case 1:
+					Status = ESP8266_OK;
+					trial = TRIAL_CONNECTION_TIME;
+					break;
+		}
+	}
 	return Status;
 }
 
 ESP8266_StatusTypeDef mqtt_Subscriber() {
 
 	int length;
-
+	unsigned char buffer[128];
 	ESP8266_StatusTypeDef Status = ESP8266_OK;
 
 	// Populate the subscribe message.
@@ -184,19 +190,38 @@ ESP8266_StatusTypeDef mqtt_Subscriber() {
 
 ESP8266_StatusTypeDef mqtt_SubscriberPacket(char *topic) {
 	int length;
+	unsigned char buffer[128];
+	ESP8266_StatusTypeDef Status = ESP8266_OK;
+	int32_t trial = 0;
+	int32_t internalState = 0;
 
-		ESP8266_StatusTypeDef Status = ESP8266_OK;
+	// Populate the subscribe message.
+	MQTTString topicFilters[1] = { MQTTString_initializer };
+	topicFilters[0].cstring = topic;//"test/rgb";
+	int requestedQoSs[1] = { 0 };
+	length = MQTTSerialize_subscribe(buffer, sizeof(buffer), 0, 1, 1,
+			topicFilters, requestedQoSs);
 
-		// Populate the subscribe message.
-		MQTTString topicFilters[1] = { MQTTString_initializer };
-		topicFilters[0].cstring = topic;//"test/rgb";
-		int requestedQoSs[1] = { 0 };
-		length = MQTTSerialize_subscribe(buffer, sizeof(buffer), 0, 1, 1,
-				topicFilters, requestedQoSs);
+	// Send SUBSCRIBE to the mqtt broker.
+	while (trial < TRIAL_CONNECTION_TIME) {
+		switch (internalState) {
+		case 0:
+			Status = ESP_SendData(buffer, length);
 
-		// Send SUBSCRIBE to the mqtt broker.
-		Status = ESP_SendData(buffer, length);
-		return Status;
+			if (Status == ESP8266_OK){//(result = transport_sendPacketBuffer(transport_socket, buffer, length)) == length) {
+				internalState++;
+			} else {
+				internalState = 0;
+				trial++;
+			}
+			break;
+		case 1:
+			Status = ESP8266_OK;
+			trial = TRIAL_CONNECTION_TIME;
+			break;
+		}
+	}
+	return Status;
 }
 
 /*ESP8266_StatusTypeDef mqtt_SubscriberReceive(char topic[], int32_t* pData) {
@@ -219,6 +244,7 @@ ESP8266_StatusTypeDef mqtt_SubscriberReceive(char topic[], int32_t* pData) {
 	ESP8266_StatusTypeDef Status = ESP8266_OK;
 	uint32_t RetLength;
 	uint8_t dato[MQTT_BUFFERSIZE];
+
 
 	//alocate memory for the receiving buffer
 	//dato = (uint8_t*) malloc(MQTT_BUFFERSIZE * sizeof(uint8_t));
