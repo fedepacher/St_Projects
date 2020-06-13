@@ -41,12 +41,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		}
 
 		// Receive one byte in interrupt mode
-		HAL_UART_Receive_IT(huart, (uint8_t*) &WiFiRxBuffer.data[WiFiRxBuffer.tail], 1);
-		if(xSemaphoreSub != NULL)
-			xSemaphoreGiveFromISR(xSemaphoreSub, &xHigherPriorityTaskWoken);
 
+		HAL_UART_Receive_IT(huart, (uint8_t*) &WiFiRxBuffer.data[WiFiRxBuffer.tail], 1);
+		if(xSemaphoreSub != NULL){
+			if(dato == '\n')
+				xSemaphoreGiveFromISR(xSemaphoreSub, &xHigherPriorityTaskWoken);
+		}
 #if DEBUG == 1
-		xQueueSendFromISR(xQueuePrintConsole, &dato, &xHigherPriorityTaskWoken);
+		//if(dato == '\n')
+			xQueueSendFromISR(xQueuePrintConsole, &dato, &xHigherPriorityTaskWoken);
 #endif
 	}
 	/* If xHigherPriorityTaskWoken was set to true you

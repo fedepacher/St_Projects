@@ -24,6 +24,13 @@
 
 /* Private macro -------------------------------------------------------------*/
 
+const uint8_t END_STRING_R_N[] = "\r\n";
+const uint8_t END_STRING_N[] = "\n";
+const uint8_t END_STRING_0[] = "\0";
+const uint8_t TRUE_STR[] = "true";
+const uint8_t FALSE_STR[] = "false";
+
+
 /* Private  Variables -------------------------------------------------------------*/
 extern I2C_HandleTypeDef hi2c1;
 static char network_host[32] = "broker.hivemq.com"; ///< HostName i.e. "test.mosquitto.org"//"broker.mqttdashboard.com";//
@@ -36,10 +43,7 @@ static char topic_sub2[] = "test/pdm";
 static char topic_pub2[] = "test/pdm";
 
 
-typedef struct{
-	char topic[20];
-	int32_t data;
-}dataPubi_t;
+
 
 
 button_t button_down;
@@ -53,12 +57,14 @@ QueueHandle_t xQueuePrintConsole;
 
 SemaphoreHandle_t xSemaphoreMutexUart;
 
-dataPubi_t dataSub;
+dataMqtt_t dataSub;
 bmp280_dev dev;
 
 
-//void UartTxTask(void *argument);
-//void UartRxTask(void *argument);
+static int32_t strpos(char *hay, char *needle, int offset);
+static int32_t findIntData(dataMqtt_t *data);
+static void remove0(dataMqtt_t *data);
+
 void wifiConnectTask(void *argument);
 void ledTask(void *argument);
 void pubTask(void *argument);
@@ -99,7 +105,7 @@ void initTasks(void) {
 
 	xQueuePrintConsole = xQueueCreate(100, sizeof(uint8_t));
 
-	xQueueDataRx = xQueueCreate(5, sizeof(int32_t));
+	xQueueDataRx = xQueueCreate(5, sizeof(dataMqtt_t));
 	//xSemaphorePub != NULL && xSemaphoreSub != NULL &&
 	if (xSemaphoreMutexUart != NULL && xQueueDataRx != NULL && xQueuePrintConsole != NULL) {
 		BaseType_t res = xTaskCreate(wifiConnectTask, "wifi", STACK_SIZE, 0,
@@ -114,7 +120,7 @@ void initTasks(void) {
 			printf("error creacion de tarea led\r\n");
 			flag_error_mem = 1;
 		}
-		res = xTaskCreate(printConsoleTask, "print", 128, 0,
+		res = xTaskCreate(printConsoleTask, "print", STACK_SIZE, 0,
 						(osPriority_t) osPriorityAboveNormal, 0);
 		if (res != pdPASS) {
 			printf("error creacion de tarea led\r\n");
@@ -239,7 +245,7 @@ void wifiConnectTask(void *argument) {
 				xSemaphoreSub = xSemaphoreCreateBinary();
 				//xSemaphorePub = xSemaphoreCreateBinary();
 
-				xQueueDataPub = xQueueCreate(20, sizeof(dataPubi_t));
+				xQueueDataPub = xQueueCreate(20, sizeof(dataMqtt_t));
 
 				if(xSemaphoreSub != NULL && xQueueDataPub != NULL){
 					BaseType_t res;
@@ -248,7 +254,7 @@ void wifiConnectTask(void *argument) {
 					if (res != pdPASS) {
 						printf("error creacion de tarea sub\r\n");
 					}
-					res = xTaskCreate(analizeTask, "analize data", 128, 0,
+					res = xTaskCreate(analizeTask, "analize data", STACK_SIZE, 0,
 							(osPriority_t) osPriorityNormal, 0);
 					if (res != pdPASS) {
 						printf("error creacion de tarea analize\r\n");
@@ -258,7 +264,7 @@ void wifiConnectTask(void *argument) {
 					if (res != pdPASS) {
 						printf("error creacion de tarea pub\r\n");
 					}
-					res = xTaskCreate(buttonsTask, "buttons", 128, 0,
+					res = xTaskCreate(buttonsTask, "buttons", STACK_SIZE, 0,
 									(osPriority_t) osPriorityAboveNormal1, 0);
 					if (res != pdPASS) {
 						printf("error creacion de tarea buttons\r\n");
@@ -313,13 +319,13 @@ void pubTask(void *argument) {
 	ESP8266_StatusTypeDef Status;
 	//uint32_t data = 0;
 	//TickType_t t = xTaskGetTickCount();
-	dataPubi_t dataQueuePub;
+	dataMqtt_t dataQueuePub;
 	//xSemaphoreTake(xSemaphorePub, portMAX_DELAY);
 	for (;;) {
 		xQueueReceive(xQueueDataPub, &dataQueuePub, portMAX_DELAY);
 
 		xSemaphoreTake(xSemaphoreMutexUart, 20000);
-		Status = mqtt_Publisher(dataQueuePub.topic, dataQueuePub.data);
+		Status = mqtt_Publisher(&dataQueuePub);
 		xSemaphoreGive(xSemaphoreMutexUart);
 		if (Status == ESP8266_OK) {
 
@@ -333,37 +339,40 @@ void pubTask(void *argument) {
 
 void subTask(void *argument) {
 	ESP8266_StatusTypeDef Status;
-
+	//uint32_t RetLength;
 
 	for (;;) {
 		xSemaphoreTake(xSemaphoreSub, portMAX_DELAY);
 
 		xSemaphoreTake(xSemaphoreMutexUart, 20000);
-		Status = mqtt_SubscriberReceive(dataSub.topic, &dataSub.data);
+		Status = mqtt_SubscriberReceive(&dataSub); //dataSub.topic, dataSub.data, &dataSub.length);
 		xSemaphoreGive(xSemaphoreMutexUart);
 
 		if (Status == ESP8266_OK) {
-			if (dataSub.data != -1)
-				xQueueSend(xQueueDataRx, &dataSub.data, 100);
+			if (dataSub.length != 0)
+				xQueueSend(xQueueDataRx, &dataSub, 100);
 		}
 		vTaskDelay(1 / portTICK_PERIOD_MS);
 	}
 }
 
 void analizeTask(void *argument) {
-	int32_t dataQueueRx;
+	dataMqtt_t dataQueueRx;
 	for (;;) {
 		xQueueReceive(xQueueDataRx, &dataQueueRx, portMAX_DELAY);
-		if (dataQueueRx == 10009){
-			vLedWrite(LED_7, GPIO_PIN_SET);
+		//findIntData(&dataQueueRx);
+		remove0(&dataQueueRx);
+		if(strstr((char*)dataQueueRx.data, (char*)topic_sub2)!= NULL){
+			if(strstr((char*)dataQueueRx.data, (char*)TRUE_STR)!= NULL){
+				vLedWrite(LED_7, GPIO_PIN_SET);
+			}
+			if(strstr((char*)dataQueueRx.data, (char*)FALSE_STR)!= NULL){
+				vLedWrite(LED_7, GPIO_PIN_RESET);
+			}
 		}
-		if (dataQueueRx == 20009){
-			vLedWrite(LED_7, GPIO_PIN_RESET);
-		}
-		if (dataQueueRx % 2 == 0) {
-			vLedWrite(LED_2, GPIO_PIN_SET);
-		} else {
-			vLedWrite(LED_2, GPIO_PIN_RESET);
+		if(strstr((char*)dataQueueRx.data, (char*)topic_sub1)!= NULL){
+			vLedToggle(LED_2);
+
 		}
 
 		vTaskDelay(1 / portTICK_PERIOD_MS);
@@ -372,10 +381,10 @@ void analizeTask(void *argument) {
 
 void buttonsTask(void *argument){
 
-	int32_t data_pub = 0;
+
 	uint32_t cont_aux = 0;
 	uint32_t cont = 0;
-	dataPubi_t data_st;
+	dataMqtt_t data_st;
 	bool flag = false;
 	fsmButtonInit(&button_down);
 	for (;;) {
@@ -385,16 +394,19 @@ void buttonsTask(void *argument){
 		if(button_down.released){
 			flag = !flag;
 			if(flag){
-				data_pub = 1000;
+				memset((char*) data_st.data, '\0', strlen((char*)data_st.data));
+				strcpy((char*)data_st.data, (char*)TRUE_STR);
 				vLedWrite(LED_6, GPIO_PIN_SET);
 			}
 			else{
-				data_pub = 2000;
+				memset((char*) data_st.data, '\0', strlen((char*)data_st.data));
+				strcpy((char*)data_st.data, (char*)FALSE_STR);
 				vLedWrite(LED_6, GPIO_PIN_RESET);
 			}
 			cont = 0;
 			strcpy((char*)data_st.topic, topic_pub2);
-			data_st.data = data_pub;
+			//data_st.length = 4;
+			//intToStr(data_pub, data_st.data, data_st.length);
 			xQueueSend(xQueueDataPub, &data_st, 1000);
 		}
 		if(cont > 10000){
@@ -402,7 +414,11 @@ void buttonsTask(void *argument){
 			cont = 0;
 			cont_aux++;
 			strcpy(data_st.topic, topic_pub1);
-			data_st.data = dev.data.temperature;
+			memset((char*) data_st.data, '\0', strlen((char*)data_st.data));
+			ftoa(dev.data.temperature, data_st.data,2);
+			strcat((char*) data_st.data, "ºC");
+			//data_st.length = sprintf((char*)data_st.data, "%f%c%c", dev.data.temperature, 'º', 'C');
+			//data_st.data = dev.data.temperature;
 			xQueueSend(xQueueDataPub, &data_st, 1000);
 		}
 		cont++;
@@ -410,4 +426,73 @@ void buttonsTask(void *argument){
 
 
 	}
+}
+
+
+static void remove0(dataMqtt_t *data){
+	uint8_t newdata[data->length];
+	int i;
+	int j = 0;
+	memset((char*) newdata, '\0', data->length);
+	for (i = 0; i < data->length; i++) {
+		if (*(data->data + i) != '\0') {
+			newdata[j++] = *(data->data + i);
+		}
+	}
+	//memcpy((char*)data->data, (char*)newdata, strlen(char*)newdata);
+	strcpy((char*)data->data, (char*)newdata);
+}
+
+static int32_t strpos(char *hay, char *needle, int offset) {
+	char haystack[strlen(hay)];
+	strncpy(haystack, hay + offset, strlen(hay) - offset);
+	char *p = strstr(haystack, needle);
+	if (p)
+		return p - haystack + offset;
+	return -1;
+}
+
+static int32_t findIntData(dataMqtt_t *data) {
+	uint8_t newdata[data->length];
+	uint32_t i = 0;
+	uint32_t j = 0;
+	int32_t data_begin;
+	int32_t data_end;
+
+	/* remove \0 */
+	memset((char*) newdata, '\0', data->length);
+	for (i = 0; i < data->length; i++) {
+		if (*(data->data + i) != '\0') {
+			newdata[j++] = *(data->data + i);
+		}
+	}
+	data_begin = strpos((char*)newdata, (char*)data->topic, 0);	//get index where string topic begins
+	data_end = strpos((char*)newdata, (char*)END_STRING_R_N, 0);		//get index where \r\n ends
+
+	if(data_end == -1 && data_begin != -1){
+		data_end = strpos((char*)newdata, (char*)END_STRING_N, 0);		//get index where \n ends
+	}
+	if(data_end == -1 && data_begin != -1){
+		data_end = strpos((char*)newdata, (char*)END_STRING_0, 0);		//get index where \n ends
+	}
+
+
+	if (data_begin != -1 && data_end != -1) {
+		i = 0;
+		//int32_t value = 0;
+		int32_t index_start = data_begin + strlen(data->topic);
+		int32_t st_lenght = data_end - index_start;// + 1; //sume uno porque el atoi me convertia mal si el st tenia un solo valor, es por eso que inicializo el primer elemtento del arreglo con el '0'
+		//uint8_t st[st_lenght];
+		//st[0] = '0';//inicializado en cero el primer elemento para que el atoi convierta los numero como el 1, 2 ....9 bien sino los convertia 10, 20 ..... 90
+		memset((char*) data->data, '\0', data->length);
+		for (i = 0; i < st_lenght; i++) {
+			data->data[i] = *(newdata + index_start + i);
+		}
+		//value = atoi((char*) st);
+
+		return 0;
+
+	}
+	return -1;
+
 }

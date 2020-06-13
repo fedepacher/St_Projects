@@ -14,6 +14,12 @@
 #define CONNECTION_KEEPALIVE_S	60UL
 #define MQTT_BUFFERSIZE			128UL
 
+typedef struct{
+	char topic[20];
+	char data[MQTT_BUFFERSIZE];
+	uint32_t length;
+}dataMqtt_t;
+
 /*
  * @brief Send connect packet to the broker mqtt.
  */
@@ -22,7 +28,7 @@ ESP8266_StatusTypeDef mqtt_Connect(void);
 /*
  * @brief Send publish packet to the broker mqtt.
  */
-ESP8266_StatusTypeDef mqtt_Publisher(char *topic, int32_t data);
+ESP8266_StatusTypeDef mqtt_Publisher(dataMqtt_t *data);//char *topic, char *data);
 
 /*
  * @brief Send subcribe packet to the broker mqtt.
@@ -31,6 +37,6 @@ ESP8266_StatusTypeDef mqtt_Subscriber();
 
 ESP8266_StatusTypeDef mqtt_SubscriberPacket(char *topic);
 
-ESP8266_StatusTypeDef mqtt_SubscriberReceive(char topic[], int32_t *pData);
+ESP8266_StatusTypeDef mqtt_SubscriberReceive(dataMqtt_t *data);//char topic[], char *pData, uint32_t *length);
 
 #endif /* INC_MQTT_H_ */
