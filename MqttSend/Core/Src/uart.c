@@ -39,9 +39,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		if (++WiFiRxBuffer.tail >= ESP_BUFFERSIZE_CIRCULAR) {
 			WiFiRxBuffer.tail = 0;
 		}
-
 		// Receive one byte in interrupt mode
-
 		HAL_UART_Receive_IT(huart, (uint8_t*) &WiFiRxBuffer.data[WiFiRxBuffer.tail], 1);
 		if(xSemaphoreSub != NULL){
 			if(dato == '\n')

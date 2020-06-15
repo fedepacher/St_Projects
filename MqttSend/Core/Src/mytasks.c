@@ -365,9 +365,11 @@ void analizeTask(void *argument) {
 		if(strstr((char*)dataQueueRx.data, (char*)topic_sub2)!= NULL){
 			if(strstr((char*)dataQueueRx.data, (char*)TRUE_STR)!= NULL){
 				vLedWrite(LED_7, GPIO_PIN_SET);
+				vLedWrite(LED_6, GPIO_PIN_SET);
 			}
 			if(strstr((char*)dataQueueRx.data, (char*)FALSE_STR)!= NULL){
 				vLedWrite(LED_7, GPIO_PIN_RESET);
+				vLedWrite(LED_6, GPIO_PIN_RESET);
 			}
 		}
 		if(strstr((char*)dataQueueRx.data, (char*)topic_sub1)!= NULL){
@@ -385,15 +387,15 @@ void buttonsTask(void *argument){
 	uint32_t cont_aux = 0;
 	uint32_t cont = 0;
 	dataMqtt_t data_st;
-	bool flag = false;
+	//bool flag = false;
 	fsmButtonInit(&button_down);
 	for (;;) {
 		//update FSM button
 		fsmButtonUpdate(&button_down);
 
 		if(button_down.released){
-			flag = !flag;
-			if(flag){
+			//flag = !flag;
+			if(vLedRead(LED_6) == GPIO_PIN_RESET){
 				memset((char*) data_st.data, '\0', strlen((char*)data_st.data));
 				strcpy((char*)data_st.data, (char*)TRUE_STR);
 				vLedWrite(LED_6, GPIO_PIN_SET);

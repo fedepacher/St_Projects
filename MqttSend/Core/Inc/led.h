@@ -50,4 +50,10 @@ void vLedWrite(led_t led, GPIO_PinState ledON);
  */
 void vLedToggle(led_t led);
 
+/*
+ * @brief Controls various LEDs.
+ * @param ledID The id number of the LED to modify.
+ * @param ledON If true, the LED is on, otherwise off.
+ */
+GPIO_PinState vLedRead(led_t led);
 #endif

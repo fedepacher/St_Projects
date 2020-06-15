@@ -108,3 +108,53 @@ void vLedToggle(led_t led) {
 	}
 
 }
+
+/*
+ * @brief Controls various LEDs.
+ * @param ledID The id number of the LED to modify.
+ * @param ledON If true, the LED is on, otherwise off.
+ */
+GPIO_PinState vLedRead(led_t led) {
+	GPIO_PinState result;
+
+	// Check the id.
+	assert(led < LED_COUNT);
+
+	// Pick the LED.
+	switch (led) {
+/*	case LED_RED:
+		result = HAL_GPIO_ReadPin(LEDR_Port, LEDR_Pin, ledON);
+		break;
+	case LED_GREEN:
+		result = HAL_GPIO_ReadPin(LEDG_Port, LEDG_Pin, ledON);
+		break;
+	case LED_BLUE:
+		result = HAL_GPIO_ReadPin(LEDB_Port, LEDB_Pin, ledON);
+		break;
+	case LED_ORANGE:
+		result = HAL_GPIO_ReadPin(LEDO_Port, LEDO_Pin, ledON);
+		break;*/
+	case LED_1:
+		result = HAL_GPIO_ReadPin(LED1_GPIO_Port, LED1_Pin);
+		break;
+	case LED_2:
+		result = HAL_GPIO_ReadPin(LED2_GPIO_Port, LED2_Pin);
+			break;
+	case LED_3:
+		result = HAL_GPIO_ReadPin(LED3_GPIO_Port, LED3_Pin);
+		break;
+	case LED_4:
+		result = HAL_GPIO_ReadPin(LED4_GPIO_Port, LED4_Pin);
+		break;
+	case LED_5:
+		result = HAL_GPIO_ReadPin(LED5_GPIO_Port, LED5_Pin);
+		break;
+	case LED_6:
+		result = HAL_GPIO_ReadPin(LED6_GPIO_Port, LED6_Pin);
+		break;
+	case LED_7:
+		result = HAL_GPIO_ReadPin(LED7_GPIO_Port, LED7_Pin);
+		break;
+	}
+	return result;
+}
