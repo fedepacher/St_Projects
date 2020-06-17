@@ -14,6 +14,9 @@
 #define TIMEOUT						1000
 #define BMP280_dev_address 			0xEE
 
+#define F3_status_reg				0xF3
+
+#define F4_ctrl_meas_reg			0xF4
 //REGISTER 0xF4
 #define F4_osrs_t_skipped			0x00
 #define F4_osrs_t_oversampling1		0x20
@@ -33,6 +36,7 @@
 #define F4_mode_forced				0X01
 #define F4_mode_normal				0X03
 
+#define F5_config_reg				0xF5
 //REGISTER 0xF5
 #define F5_t_sb_500us				0X00
 #define F5_t_sb_62500us				0X20
@@ -51,6 +55,8 @@
 
 #define F5_spi4w_en					0X00
 #define F5_spi3w_en					0X01
+
+#define F7_press_reg				0xF7
 
 /*! @name Calibration parameters' relative position */
 #define BMP280_DIG_T1_LSB_POS                0
@@ -128,14 +134,35 @@ typedef struct
 }bmp280_dev;
 
 
-
+/*
+ * @brief I2C Write function
+ * @param device_adr device address
+ * @param internal_adr internal register's address
+ * @param data data to be written
+ */
 void BMP280_i2c_write_reg(uint8_t device_adr, uint8_t internal_adr, uint8_t data);
 
+/*
+ * @brief Initialize the I2C module
+ * @param dev structure of the sensor
+ */
 void BMP280_init(bmp280_dev *dev);
 
+/*
+ * @brief Calculate the temp press and altitud
+ * @param dev structure of the sensor
+ */
 void BMP280_calc_values(bmp280_dev *dev);
 
-uint8_t BMP280_i2c_read_reg(uint8_t device_adr, uint8_t internal_adr, uint8_t* data, uint16_t lenght);
+/*
+ * @brief I2C Read function
+ * @param device_adr device address
+ * @param internal_adr internal register's address
+ * @param data data to be written
+ * @param lenght data length
+ * @param data data to be written
+ */
+uint8_t BMP280_i2c_read_reg(uint8_t device_adr, uint8_t internal_adr, uint8_t* data, uint16_t length);
 
 
 #endif /* INC_BMP280_EX_H_ */

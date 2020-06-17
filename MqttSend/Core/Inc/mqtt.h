@@ -35,8 +35,14 @@ ESP8266_StatusTypeDef mqtt_Publisher(dataMqtt_t *data);//char *topic, char *data
  */
 ESP8266_StatusTypeDef mqtt_Subscriber();
 
+/*
+ * @brief Send subcribe packet to the broker mqtt.
+ */
 ESP8266_StatusTypeDef mqtt_SubscriberPacket(char *topic);
 
+/*
+ * @brief Receive packets from the broker mqtt.
+ */
 ESP8266_StatusTypeDef mqtt_SubscriberReceive(dataMqtt_t *data);//char topic[], char *pData, uint32_t *length);
 
 #endif /* INC_MQTT_H_ */

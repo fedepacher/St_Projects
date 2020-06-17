@@ -20,7 +20,6 @@ extern "C" {
 
 /*=====[Macros de definicion de constantes publicas]=========================*/
 
-//#define PI 3.14
 
 /*=====[Macros estilo funcion publicas]======================================*/
 
@@ -58,11 +57,34 @@ typedef struct{
 }button_t;
 /*=====[Prototipos de funciones publicas]====================================*/
 
-
+/*
+ * @brief Error detected in the MEF
+ * @param config structure of the button
+ */
 void fsmButtonError(button_t* config);
+
+/*
+ * @brief Initialize the button structure
+ * @param config structure of the button
+ */
 void fsmButtonInit(button_t* config);
+
+/*
+ * @brief Run MEF
+ * @param config structure of the button
+ */
 void fsmButtonUpdate(button_t* config);
+
+/*
+ * @brief indicate if button was pressed
+ * @param config structure of the button
+ */
 void buttonPressed(button_t* config);
+
+/*
+ * @brief indicate if button was released after been pressed
+ * @param config structure of the button
+ */
 void buttonReleased(button_t* config);
 
 

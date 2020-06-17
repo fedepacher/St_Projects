@@ -294,6 +294,13 @@ ESP8266_StatusTypeDef ESP_ReceiveData(uint8_t* Buffer, uint32_t Length,
 }
 
 
+/**
+ * @brief  MEF to send and recieve AT command
+ * @param  cmd the buffer to fill will the received data.
+ * @param  Length the maximum data size to receive.
+ * @param  Token the expected output if command runs successfully
+ * @retval Returns ESP8266_OK on success and ESP8266_ERROR otherwise.
+ */
 ESP8266_StatusTypeDef atCommand(uint8_t* cmd, uint32_t Length, const uint8_t* Token) {
 	static uint8_t internalState;
 	ESP8266_StatusTypeDef result;
@@ -331,9 +338,7 @@ static ESP8266_StatusTypeDef executeAtCmd(uint8_t* cmd, uint32_t Length) {
 
 
 /**
- * @brief  Run the AT command
- * @param  cmd the buffer to fill will the received data.
- * @param  Length the maximum data size to receive.
+ * @brief  Wait response to the AT command
  * @param  Token the expected output if command runs successfully
  * @retval Returns ESP8266_OK on success and ESP8266_ERROR otherwise.
  */
@@ -388,7 +393,12 @@ static ESP8266_StatusTypeDef responseAtCmd(const uint8_t* Token) {
 
 
 
-
+/**
+ * @brief  Extract info to the circular bufer
+ * @param  Buffer The buffer where to fill the received data
+ * @param  Length the maximum data size to receive.
+ * @retval Returns ESP8266_OK on success and ESP8266_ERROR otherwise.
+ */
 static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
 	uint32_t ReadData = 0;
 	/* Loop until data received */

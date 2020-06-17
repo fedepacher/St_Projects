@@ -33,6 +33,7 @@ const uint8_t FALSE_STR[] = "false";
 
 /* Private  Variables -------------------------------------------------------------*/
 extern I2C_HandleTypeDef hi2c1;
+
 static char network_host[32] = "broker.hivemq.com"; ///< HostName i.e. "test.mosquitto.org"//"broker.mqttdashboard.com";//
 static unsigned short int network_port = 1883; ///< Remote port number.
 static unsigned short int network_keepalive = 60; ///< Default keepalive time in seconds.
@@ -41,9 +42,6 @@ static char topic_sub1[] = "test/rtos";
 static char topic_pub1[] = "test/rtos";
 static char topic_sub2[] = "test/pdm";
 static char topic_pub2[] = "test/pdm";
-
-
-
 
 
 button_t button_down;
@@ -65,13 +63,7 @@ static int32_t strpos(char *hay, char *needle, int offset);
 static int32_t findIntData(dataMqtt_t *data);
 static void remove0(dataMqtt_t *data);
 
-void wifiConnectTask(void *argument);
-void ledTask(void *argument);
-void pubTask(void *argument);
-void subTask(void *argument);
-void analizeTask(void *argument);
-void printConsoleTask(void *argument);
-void buttonsTask(void *argument);
+
 
 void initTasks(void) {
 

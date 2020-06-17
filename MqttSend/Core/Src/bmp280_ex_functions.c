@@ -24,7 +24,7 @@ uint8_t string_compare(char array1[], char array2[], uint16_t lenght) {
 }
 
 // reverses a string 'str' of length 'len'
-void reverse(char *str, int len) {
+void reverse(char *str, int32_t len) {
 	int i = 0, j = len - 1, temp;
 	while (i < j) {
 		temp = str[i];
@@ -38,7 +38,7 @@ void reverse(char *str, int len) {
 // Converts a given integer x to string str[].  d is the number
 // of digits required in output. If d is more than the number
 // of digits in x, then 0s are added at the beginning.
-int intToStr(int x, char str[], int d) {
+int intToStr(int32_t x, char str[], int32_t d) {
 	int i = 0;
 	while (x) {
 		str[i++] = (x % 10) + '0';
