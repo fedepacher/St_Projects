@@ -62,7 +62,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
  * @retval None.
  */
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-	WIFI_Handler();
+	//WIFI_Handler();
 }
 
 void HAL_UART_F_Init(void) {

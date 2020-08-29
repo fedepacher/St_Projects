@@ -118,6 +118,11 @@ ESP8266_StatusTypeDef ESP_ReceiveData(uint8_t* Buffer, uint32_t Length,
 		uint32_t* RetLength);
 
 /*
+ * @brief Close connection.
+ */
+ESP8266_StatusTypeDef ESP8266_ConnectionClose(void);
+
+/*
  * @brief Reset Module ESP.
  * @return SUCCESS, BUSY or ERROR.
  */

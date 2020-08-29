@@ -44,8 +44,8 @@ BMP280_496.bin \
 all: BMP280_496.elf secondary-outputs
 
 # Tool invocations
-BMP280_496.elf: $(OBJS) $(USER_OBJS) /home/fedepacher/STM32CubeIDE/workspace_1.3.0/BMP280_496/STM32L496AGIX_FLASH.ld
-	arm-none-eabi-gcc -o "BMP280_496.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/fedepacher/STM32CubeIDE/workspace_1.3.0/BMP280_496/STM32L496AGIX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BMP280_496.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+BMP280_496.elf: $(OBJS) $(USER_OBJS) /home/fedepacher/STM32CubeIDE/workspace_1.3.0/St_Projects/BMP280_496/STM32L496AGIX_FLASH.ld
+	arm-none-eabi-gcc -o "BMP280_496.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/fedepacher/STM32CubeIDE/workspace_1.3.0/St_Projects/BMP280_496/STM32L496AGIX_FLASH.ld" --specs=nosys.specs -Wl,-Map="BMP280_496.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

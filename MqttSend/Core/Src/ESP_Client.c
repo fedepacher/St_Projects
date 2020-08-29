@@ -94,10 +94,15 @@ ESP8266_StatusTypeDef ESP_Delay(const uint16_t delay_ms){
  * @return SUCCESS, BUSY or ERROR.
  */
 ESP8266_StatusTypeDef ESP_Reset(){
-	ESP8266_StatusTypeDef result;
+	ESP8266_StatusTypeDef result = ESP8266_OK;
 	//result = runAtCmd((uint8_t*)"AT+RST\r\n", 8, (uint8_t*) AT_OK_STRING);
 	return result;
 }
+
+ESP8266_StatusTypeDef ESP8266_ConnectionClose(void) {
+	return atCommand((uint8_t*) "AT+CIPCLOSE\r\n", 13, (uint8_t*) AT_OK_STRING);
+}
+
 /*
  * @brief Connect to AP.
  * @param resetToDefault If true, reset the module to default settings before connecting.
@@ -405,7 +410,7 @@ static int32_t ESP_Receive(uint8_t *Buffer, uint32_t Length) {
 	while (Length--) {
 		//uint32_t tickStart = HAL_GetTick();
 		TickType_t tickStart = xTaskGetTickCount();
-		uint32_t currentTime = 0;
+		//uint32_t currentTime = 0;
 		do {
 			if (WiFiRxBuffer.head != WiFiRxBuffer.tail) {
 				/* serial data available, so return data to user */

@@ -47,7 +47,7 @@ static char topic_pub2[] = "test/pdm";
 button_t button_down;
 
 TaskHandle_t wifiTask;
-QueueHandle_t xSemaphorePub;
+//QueueHandle_t xSemaphorePub;
 QueueHandle_t xSemaphoreSub;
 QueueHandle_t xQueueDataRx;
 QueueHandle_t xQueueDataPub;

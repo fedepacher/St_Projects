@@ -15,18 +15,15 @@
 
 
 #define TRIAL_CONNECTION_TIME	5
-
+#define BUFFERSIZE_CMD 		128
 
 //int32_t transport_socket;
 
 
 ESP8266_StatusTypeDef mqtt_Connect(void) {
-	//unsigned char buffer[128];
-	//MQTTTransport transporter;
-	//int32_t result;
 	int32_t length;
-	unsigned char buffer[128];
-
+	unsigned char buffer[BUFFERSIZE_CMD];
+	uint8_t sessionPresent, connack_rc;
 	ESP8266_StatusTypeDef Status = ESP8266_OK;
 	int32_t internalState = 0;
 	int32_t trial = 0;
@@ -35,20 +32,12 @@ ESP8266_StatusTypeDef mqtt_Connect(void) {
 	while (trial < TRIAL_CONNECTION_TIME) {
 		switch (internalState) {
 		case 0:
-			// Populate the transporter.
-			//transporter.sck = &transport_socket;
-			//transporter.getfn = transport_getdatanb;
-			//transporter.state = 0;
-
-			// Populate the connect struct.
-
-
 			connectData.MQTTVersion = 3; //4
 			connectData.clientID.cstring = "fede";
 			connectData.keepAliveInterval = CONNECTION_KEEPALIVE_S * 2;
 			//connectData.willFlag = 1;
 			//connectData.will.qos = 2;
-			memset((char*)buffer, '\0', strlen((char*)buffer));
+			memset((char*) buffer, '\0', BUFFERSIZE_CMD);
 			length = MQTTSerialize_connect(buffer, sizeof(buffer),
 					&connectData);
 
@@ -56,58 +45,53 @@ ESP8266_StatusTypeDef mqtt_Connect(void) {
 
 			Status = ESP_SendData(buffer, length);
 
-			//if ((result = transport_sendPacketBuffer(transport_socket, buffer,length)) == length) {
 			if (Status == ESP8266_OK) {
-				//Status = ESP8266_OK;
-				internalState = 2;			//internalState++;
+
+				internalState++;
 			} else {
-				//Status = ESP8266_ERROR;
 				internalState = 0;
-				trial++;
+				if(Status == ESP8266_ERROR)
+					trial++;
 			}
 			break;
 		case 1:
-			//not implemented yet
+			memset((char*) buffer, '\0', BUFFERSIZE_CMD);
+			uint32_t Retlength;
+			Status = ESP_ReceiveData(buffer, BUFFERSIZE_CMD, &Retlength);
 
-			// Wait for CONNACK response from the mqtt broker.
-			/*while (TRUE) {
-				// Wait until the transfer is done.
-				if ((result = MQTTPacket_readnb(buffer, sizeof(buffer),
-						&transporter)) == CONNACK) {
-					// Check if the connection was accepted.
-					unsigned char sessionPresent, connack_rc;
-					if ((MQTTDeserialize_connack(&sessionPresent, &connack_rc,
-							buffer, sizeof(buffer)) != 1)
-							|| (connack_rc != 0)) {
-						// Start over.
-						internalState = 0;
-						break;
-					} else {
-						// To the next state.
-
-						internalState++;
-						break;
-					}
-				} else if (result == -1) {
-					// Start over.
-					internalState = 0;
-					trial++;
+			if (Status == ESP8266_OK) {
+				if (MQTTDeserialize_connack(&sessionPresent, &connack_rc,
+						buffer, strlen((char*) buffer)) != 1) {
+					internalState++;
+				} else {
+					Status = ESP8266_OK;
+					trial = TRIAL_CONNECTION_TIME;
 					break;
 				}
-			}*/
+			} else {
+				internalState++;
+			}
 			break;
+
 		case 2:
-			Status = ESP8266_OK;
-			trial = TRIAL_CONNECTION_TIME;
+			memset((char*) buffer, '\0', BUFFERSIZE_CMD);
+			length = MQTTSerialize_disconnect(buffer, sizeof(buffer));
+			Status = ESP_SendData(buffer, length);
+			internalState++;
+			break;
+		case 3:
+			Status = ESP8266_ConnectionClose();
+			trial = TRIAL_CONNECTION_TIME;//aca deberia devolver para reconectarse
 			break;
 		}
-	}
 
+	}
 	return Status;
 }
 
+
 ESP8266_StatusTypeDef mqtt_Publisher(dataMqtt_t *data){
-	unsigned char buffer[128];
+	unsigned char buffer[BUFFERSIZE_CMD];
 	int32_t length;
 	int32_t trial = 0;
 	int32_t internalState = 0;
@@ -117,10 +101,10 @@ ESP8266_StatusTypeDef mqtt_Publisher(dataMqtt_t *data){
 	MQTTString topicString = MQTTString_initializer;
 	topicString.cstring = data->topic;
 	int qos = 0;
-	memset((char*)buffer, '\0', strlen((char*)buffer));
+	memset((char*)buffer, '\0', BUFFERSIZE_CMD);
 	//strcat((char*)data->data, "\r\n");// OJO QUE PUEDE QUE ALGUNOS ENVIOS NECESITEN ESTE \R\N
 	length = MQTTSerialize_publish(buffer, sizeof(buffer), 0, qos, 0, 0,
-			topicString, data->data, strlen((char*)data->data));
+			topicString, (char*)data->data, strlen((char*)data->data));
 
 	// Send PUBLISH to the mqtt broker.
 	while (trial < TRIAL_CONNECTION_TIME) {
